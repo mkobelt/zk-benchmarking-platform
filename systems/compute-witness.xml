@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<!DOCTYPE benchmark PUBLIC "+//IDN sosy-lab.org//DTD BenchExec benchmark 2.3//EN" "https://www.sosy-lab.org/benchexec/benchmark-2.3.dtd">
+
+<benchmark tool="tools.zokrates" displayName="ZoKrates">
+    <option name="compute-witness"/>
+    <option name="--abi-spec">${inputfile_path}/abi.json</option>
+
+    <tasks>
+        <include>../results/compile.*.files/*/get_hash.zok/*.out</include>
+        <option name="--arguments"/>
+        <option name="0"/>
+        <option name="1"/>
+        <option name="2"/>
+        <option name="3"/>
+        <option name="4"/>
+        <option name="5"/>
+        <option name="6"/>
+        <option name="7"/>
+        <option name="8"/>
+        <option name="9"/>
+        <option name="10"/>
+        <option name="11"/>
+        <option name="12"/>
+        <option name="13"/>
+        <option name="14"/>
+        <option name="15"/>
+    </tasks>
+
+    <tasks>
+        <include>../results/compile.*.files/*/hello.zok/*.out</include>
+        <option name="--arguments"/>
+        <option name="0"/>
+        <option name="1"/>
+        <option name="2"/>
+        <option name="3"/>
+        <option name="4"/>
+        <option name="5"/>
+        <option name="6"/>
+        <option name="7"/>
+        <option name="8"/>
+        <option name="9"/>
+        <option name="10"/>
+        <option name="11"/>
+        <option name="12"/>
+        <option name="13"/>
+        <option name="14"/>
+        <option name="15"/>
+        <option name="510"/>
+    </tasks>
+
+    <rundefinition/>
+</benchmark>

@@ -1,0 +1,34 @@
+{
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "ZoKrates",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--package",
+                    "zokrates_cli",
+                    "--manifest-path=${workspaceFolder}/ZoKrates/Cargo.toml"
+                ]
+            },
+            "args": [
+                "setup",
+                "--proving-scheme",
+                "marlin"
+            ]
+        },
+        {
+        "type": "node",
+        "request": "launch",
+        "name": "Launch Program",
+        "runtimeArgs": [
+            "-r",
+            "ts-node/register"
+        ],
+        "runtimeExecutable": "/home/max/.nvm/versions/node/v19.6.0/bin/node",
+        "args": [
+            "${workspaceFolder}/main.ts"
+        ]
+    }],
+}

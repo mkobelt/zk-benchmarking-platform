@@ -1,0 +1,3 @@
+[submodule "ZoKrates"]
+	path = systems/zokrates/source
+	url = https://github.com/Zokrates/ZoKrates.git
