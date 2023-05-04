@@ -125,7 +125,7 @@ export default class Zokrates extends System {
                         {
                             "input": inputFile,
                             curve,
-                            "stdlib-path": "/home/max/.zokrates/stdlib",
+                            "stdlib-path": path.resolve(__dirname, "systems/zokrates/source/zokrates_stdlib/stdlib"),
                             "r1cs": "/dev/null",
                         }
                     ),
