@@ -3,4 +3,4 @@
 	url = https://github.com/Zokrates/ZoKrates.git
 [submodule "libsnark"]
 	path = systems/libsnark/source
-	url = https://github.com/scipr-lab/libsnark
+	url = https://github.com/mkobelt/libsnark
