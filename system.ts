@@ -17,7 +17,10 @@ export abstract class System {
         this.name = name;
         this.resultsDir = path.resolve(__dirname, "results", name);
     }
-    abstract run(): Generator<RunConfig, void, void>;
+
+    public abstract run(): Generator<RunConfig, void, void>;
+    public abstract build(): void;
+
     public getPath(...p: string[]): string {
         return path.resolve(this.resultsDir, ...p);
     }

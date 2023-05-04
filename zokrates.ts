@@ -1,5 +1,6 @@
 import * as path from "node:path";
 import * as fs from "node:fs";
+import * as child_process from "node:child_process";
 
 import { RunConfig, System } from "./system";
 
@@ -71,8 +72,25 @@ const backends: Backend[] = [
 ];
 
 export default class Zokrates extends System {
+    private exe = "zokrates";
+
     constructor() {
         super("zokrates");
+    }
+
+    public build(): void {
+        console.log("Building ZoKrates from source...");
+        const res = child_process.spawnSync(path.resolve(__dirname, "systems/zokrates/install.sh"));
+        if (res.status !== 0) {
+            throw res.error ?? new Error("Unknown error");
+        }
+        console.log("Built ZoKrates");
+
+        const exePath = path.resolve(__dirname, "systems/zokrates/source/target/release/zokrates");
+        if (!fs.existsSync(exePath)) {
+            throw new Error("ZoKrates executable does not exist at expected path");
+        }
+        this.exe = exePath;
     }
 
     public *run(): Generator<RunConfig, void, void> {
@@ -82,7 +100,7 @@ export default class Zokrates extends System {
                 const config = `${curve}.${scheme}`;
 
                 yield {
-                    "cmdLine": cmdLine(
+                    "cmdLine": this.cmdLine(
                         "universal-setup",
                         {
                             curve,
@@ -102,7 +120,7 @@ export default class Zokrates extends System {
                 const compileOut = `${curve}/programs/${fileName}`;
 
                 yield {
-                    "cmdLine": cmdLine(
+                    "cmdLine": this.cmdLine(
                         "compile",
                         {
                             "input": inputFile,
@@ -130,7 +148,7 @@ export default class Zokrates extends System {
                         }
 
                         yield {
-                            "cmdLine": cmdLine(
+                            "cmdLine": this.cmdLine(
                                 "setup",
                                 Object.assign(options, {
                                     "input": this.getPath(`${compileOut}/out`),
@@ -147,19 +165,19 @@ export default class Zokrates extends System {
             }
         }
     }
+
+    private cmdLine(action: string, options: Record<string, string>): string[] {
+        const cmd = [this.exe, action];
+        for (const [key, value] of Object.entries(options)) {
+            cmd.push(`--${key}`, value);
+        }
+        return cmd;
+    }
 }
 
 const universalSchemes: Scheme[] = [
     "marlin",
 ];
-
-function cmdLine(action: string, options: Record<string, string>): string[] {
-    const cmd = ["zokrates", action];
-    for (const [key, value] of Object.entries(options)) {
-        cmd.push(`--${key}`, value);
-    }
-    return cmd;
-}
 
 const inputFolder = path.resolve(__dirname, "systems/zokrates/programs");
 const inputFiles = fs.readdirSync(inputFolder).map(file => path.resolve(inputFolder, file));

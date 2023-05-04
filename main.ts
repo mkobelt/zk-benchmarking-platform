@@ -4,7 +4,7 @@ import * as os from "node:os";
 import * as fs from "node:fs";
 
 import { System } from "./system";
-import LibSnark from "./libsnark";
+import Libsnark from "./libsnark";
 import Zokrates from "./zokrates";
 
 export function createDir(path: string) {
@@ -24,7 +24,7 @@ createDir(csvDir);
 export const phases = ["compile", "setup", "prove", "verify"] as const;
 
 const SYSTEMS: System[] = [
-    new LibSnark(),
+    new Libsnark(),
     new Zokrates(),
 ];
 
@@ -73,6 +73,8 @@ const resultFiles = phases.reduce((obj, phase) => {
 for (const system of SYSTEMS) {
     const systemDir = system.getPath();
     createDir(systemDir);
+
+    system.build();
 
     for (const run of system.run()) {
         const outDir = system.getPath(run.resultDir);
