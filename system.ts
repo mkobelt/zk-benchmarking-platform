@@ -9,9 +9,12 @@ export type RunConfig = {
 };
 
 export abstract class System {
+    public readonly name: string;
+
     private readonly resultsDir: string;
 
     constructor(name: string) {
+        this.name = name;
         this.resultsDir = path.resolve(__dirname, "results", name);
     }
     abstract run(): Generator<RunConfig, void, void>;

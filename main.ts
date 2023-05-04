@@ -7,10 +7,6 @@ import { System } from "./system";
 import LibSnark from "./libsnark";
 import Zokrates from "./zokrates";
 
-const resultDir = path.resolve(__dirname, "results");
-
-createDir(resultDir);
-
 export function createDir(path: string) {
     try {
         fs.mkdirSync(path, {"recursive": true});
@@ -21,31 +17,15 @@ export function createDir(path: string) {
     }
 }
 
+const resultDir = path.resolve(__dirname, "results");
+const csvDir = path.resolve(resultDir, "csv");
+createDir(csvDir);
+
 export const phases = ["compile", "setup", "prove", "verify"] as const;
 
-export interface Run<
-    I extends Run | null = null,
-    O extends Record<string, unknown> = {},
-> {
-    cmdLine: I extends Run ? (input: I["output"]) => string : string;
-    config: string;
-    output: I extends Run ? (prevOutputs: I["output"]) => I["output"] & O : O;
-};
-
-export type CompileRun = Run<null, {
-    out: string;
-}>;
-export type SetupRun = Run<CompileRun, {
-    provingKey: string;
-    verificationKey: string;
-}>;
-export type WitnessRun = Run<CompileRun, {
-    witness: string;
-}>;
-
 const SYSTEMS: System[] = [
-    new Zokrates(),
     new LibSnark(),
+    new Zokrates(),
 ];
 
 const stats = [
@@ -81,40 +61,47 @@ function collectStatistics(lines: string[]): RunStats {
     return results as RunStats;
 }
 
-(async() => {
-    for (const system of SYSTEMS) {
-        const systemDir = system.getPath();
-        createDir(systemDir);
+const csvHeader = `system,config,${stats.join(",")}\n`;
 
-        for (const run of system.run()) {
-            const outDir = system.getPath(run.resultDir);
-            createDir(outDir);
+const resultFiles = phases.reduce((obj, phase) => {
+    const fd = fs.openSync(path.resolve(csvDir, `${phase}.csv`), "w");
+    fs.writeSync(fd, csvHeader);
+    obj[phase] = fd;
+    return obj;
+}, {} as Record<typeof phases[number], number>);
 
-            const res = child_process.spawnSync(
-                "runexec",
-                [
-                    "--read-only-dir",
-                    "/",
-                    "--overlay-dir",
-                    "/home",
-                    "--output-directory",
-                    outDir,
-                    "--",
-                    ...run.cmdLine,
-                ]);
-            const out = res.stdout.toString();
-            const lines = out.split(os.EOL);
+for (const system of SYSTEMS) {
+    const systemDir = system.getPath();
+    createDir(systemDir);
 
-            try {
-                const results = collectStatistics(lines);
-                const csv = `${stats.join(",")}\n${stats.map(stat => results[stat]).join(",")}`;
+    for (const run of system.run()) {
+        const outDir = system.getPath(run.resultDir);
+        createDir(outDir);
 
-                fs.writeFileSync(path.resolve(outDir, `${run.phase}.csv`), csv);
-            } catch (err) {
-                console.log(err);
-            } finally {
-                fs.renameSync(path.resolve(__dirname, "output.log"), path.resolve(outDir, `${run.phase}.log`));
-            }
+        const res = child_process.spawnSync(
+            "runexec",
+            [
+                "--read-only-dir",
+                "/",
+                "--overlay-dir",
+                "/home",
+                "--output-directory",
+                outDir,
+                "--",
+                ...run.cmdLine,
+            ]);
+        const out = res.stdout.toString();
+        const lines = out.split(os.EOL);
+
+        try {
+            const results = collectStatistics(lines);
+            const csv = `${system.name},${run.config},${stats.map(stat => results[stat]).join(",")}\n`;
+
+            fs.writeSync(resultFiles[run.phase], csv);
+        } catch (err) {
+            console.log(err);
+        } finally {
+            fs.renameSync(path.resolve(__dirname, "output.log"), path.resolve(outDir, `${run.phase}.log`));
         }
     }
-})();
+}
