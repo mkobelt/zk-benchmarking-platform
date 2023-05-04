@@ -1,22 +1,19 @@
 {
   "name": "zk-benchmarking-platform",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "bench": "npx ts-node main.ts"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mkobelt/zk-benchmarking-platform.git"
   },
-  "author": "",
+  "author": "Max Kobelt",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/mkobelt/zk-benchmarking-platform/issues"
   },
   "homepage": "https://github.com/mkobelt/zk-benchmarking-platform#readme",
-  "devDependencies": {
+  "dependencies": {
     "ts-node": "^10.9.1",
     "typescript": "^5.0.4"
   }

@@ -3,17 +3,25 @@ import * as path from "node:path";
 import * as os from "node:os";
 import * as fs from "node:fs";
 
-import zokrates from "./zokrates";
+import { System } from "./system";
+import LibSnark from "./libsnark";
+import Zokrates from "./zokrates";
 
-export const resultDir = path.resolve(__dirname, "results/");
+const resultDir = path.resolve(__dirname, "results");
 
-enum Phase {
-    COMPILE,
-    SETUP,
-    COMPUTE_WITNESS,
-    PROVE,
-    VERIFY,
-};
+createDir(resultDir);
+
+export function createDir(path: string) {
+    try {
+        fs.mkdirSync(path, {"recursive": true});
+    } catch(err) {
+        if (typeof err !== "object" || err === null || !("code" in err) || err.code !== "EEXIST") {
+            throw err;
+        }
+    }
+}
+
+export const phases = ["compile", "setup", "prove", "verify"] as const;
 
 export interface Run<
     I extends Run | null = null,
@@ -35,15 +43,9 @@ export type WitnessRun = Run<CompileRun, {
     witness: string;
 }>;
 
-export type System = {
-    runs: () => Generator<{
-        cmdLine: string[];
-        config: string;
-    }, void, void>
-}
-
 const SYSTEMS: System[] = [
-    zokrates,
+    new Zokrates(),
+    new LibSnark(),
 ];
 
 const stats = [
@@ -81,7 +83,13 @@ function collectStatistics(lines: string[]): RunStats {
 
 (async() => {
     for (const system of SYSTEMS) {
-        for (const run of system.runs()) {
+        const systemDir = system.getPath();
+        createDir(systemDir);
+
+        for (const run of system.run()) {
+            const outDir = system.getPath(run.resultDir);
+            createDir(outDir);
+
             const res = child_process.spawnSync(
                 "runexec",
                 [
@@ -90,7 +98,7 @@ function collectStatistics(lines: string[]): RunStats {
                     "--overlay-dir",
                     "/home",
                     "--output-directory",
-                    resultDir,
+                    outDir,
                     "--",
                     ...run.cmdLine,
                 ]);
@@ -99,13 +107,13 @@ function collectStatistics(lines: string[]): RunStats {
 
             try {
                 const results = collectStatistics(lines);
-
                 const csv = `${stats.join(",")}\n${stats.map(stat => results[stat]).join(",")}`;
-                fs.writeFileSync(path.resolve(resultDir, `${run.config}.csv`), csv);
+
+                fs.writeFileSync(path.resolve(outDir, `${run.phase}.csv`), csv);
             } catch (err) {
                 console.log(err);
             } finally {
-                fs.renameSync(path.resolve(__dirname, "output.log"), path.resolve(resultDir, `${run.config}.log`));
+                fs.renameSync(path.resolve(__dirname, "output.log"), path.resolve(outDir, `${run.phase}.log`));
             }
         }
     }
