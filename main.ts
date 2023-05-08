@@ -6,6 +6,7 @@ import * as fs from "node:fs";
 import { System } from "./system";
 import Libsnark from "./libsnark";
 import Zokrates from "./zokrates";
+import Gnark from "./gnark";
 
 export function createDir(path: string) {
     try {
@@ -26,6 +27,7 @@ export const phases = ["compile", "setup", "prove", "verify"] as const;
 const SYSTEMS: System[] = [
     new Libsnark(),
     new Zokrates(),
+    new Gnark(),
 ];
 
 const stats = [
