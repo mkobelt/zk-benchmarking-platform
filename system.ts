@@ -1,5 +1,5 @@
 import * as path from "node:path";
-import { phases } from "./main";
+import { phases } from "./bench";
 
 export type RunConfig = {
     cmdLine: string[];

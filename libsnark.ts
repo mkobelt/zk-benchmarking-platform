@@ -1,7 +1,7 @@
 import * as path from "node:path";
 import * as child_process from "node:child_process";
 
-import {createDir, phases} from "./main";
+import {createDir, phases} from "./bench";
 import {type RunConfig, System} from "./system";
 
 const curves = ["alt_bn128", "bn128", "edwards"] as const;

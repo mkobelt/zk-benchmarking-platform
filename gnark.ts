@@ -2,7 +2,7 @@ import * as child_process from "node:child_process";
 import * as path from "node:path";
 
 import { RunConfig, System } from "./system";
-import { phases } from "./main";
+import { phases } from "./bench";
 
 const gnarkDir = path.resolve(__dirname, "systems/gnark");
 
