@@ -71,13 +71,13 @@ const resultFiles = phases.reduce((obj, phase) => {
 }, {} as Record<typeof phases[number], number>);
 
 for (const system of SYSTEMS) {
-    const systemDir = system.getPath();
+    const systemDir = system.resolveResultDir();
     createDir(systemDir);
 
     system.build();
 
     for (const run of system.run()) {
-        const outDir = system.getPath(run.resultDir);
+        const outDir = system.resolveResultDir(run.resultDir);
         createDir(outDir);
 
         const res = child_process.spawnSync(

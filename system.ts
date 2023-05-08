@@ -21,7 +21,7 @@ export abstract class System {
     public abstract run(): Generator<RunConfig, void, void>;
     public abstract build(): void;
 
-    public getPath(...p: string[]): string {
+    public resolveResultDir(...p: string[]): string {
         return path.resolve(this.resultsDir, ...p);
     }
 }

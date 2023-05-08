@@ -4,6 +4,20 @@ import * as child_process from "node:child_process";
 
 import { RunConfig, System } from "./system";
 
+const programFolder = path.resolve(__dirname, "systems/zokrates/programs");
+const programFiles = fs.readdirSync(programFolder)
+    .filter(file => path.extname(file) === ".zok")
+    .map(file => {
+        const inputFile = path.resolve(programFolder, `${path.parse(file).name}.inputs`);
+        if (!fs.existsSync(inputFile)) {
+            throw new Error(`Inputs for program ${file} do not exist`);
+        }
+        return {
+            "program": path.resolve(programFolder, file),
+            "inputs": inputFile,
+        }
+    });
+
 const curves = [
     "bn128",
     "bls12_381",
@@ -114,8 +128,8 @@ export default class Zokrates extends System {
                 };
             }
 
-            for (const inputFile of inputFiles) {
-                const fileName = path.parse(inputFile).name;
+            for (const {program, inputs} of programFiles) {
+                const fileName = path.parse(program).name;
                 const curveFileConfig = `${curve}.${fileName}`;
                 const compileOut = `${curve}/programs/${fileName}`;
 
@@ -123,7 +137,7 @@ export default class Zokrates extends System {
                     "cmdLine": this.cmdLine(
                         "compile",
                         {
-                            "input": inputFile,
+                            "input": program,
                             curve,
                             "stdlib-path": path.resolve(__dirname, "systems/zokrates/source/zokrates_stdlib/stdlib"),
                             "r1cs": "/dev/null",
@@ -133,6 +147,20 @@ export default class Zokrates extends System {
                     "phase": "compile",
                     "resultDir": compileOut,
                 };
+
+                yield {
+                    "cmdLine": this.cmdLine(
+                        "compute-witness",
+                        {
+                            "abi-spec": this.resolveResultDir(compileOut, "abi.json"),
+                            "arguments": fs.readFileSync(inputs, "utf-8").split(" "),
+                            "input": this.resolveResultDir(compileOut, "out"),
+                        },
+                    ),
+                    "config": curveFileConfig,
+                    "phase": "prove",
+                    "resultDir": compileOut,
+                }
 
                 for (const backend of backends) {
                     const backendConfig = `${curveFileConfig}.${backend.name}`;
@@ -144,32 +172,65 @@ export default class Zokrates extends System {
 
                         const options: Record<string, string> = {};
                         if (universalSchemes.includes(scheme)) {
-                            options["universal-setup-path"] = this.getPath(`${curve}/universal-setup/${scheme}/universal_setup.dat`);
+                            options["universal-setup-path"] = this.resolveResultDir(`${curve}/universal-setup/${scheme}/universal_setup.dat`);
                         }
+
+                        const setupDir = `${compileOut}/${backend.name}/${scheme}`;
 
                         yield {
                             "cmdLine": this.cmdLine(
                                 "setup",
                                 Object.assign(options, {
-                                    "input": this.getPath(`${compileOut}/out`),
+                                    "input": this.resolveResultDir(`${compileOut}/out`),
                                     "backend": backend.name,
                                     "proving-scheme": scheme,
                                 }),
                             ),
                             "config": schemeConfig,
                             "phase": "setup",
-                            "resultDir": this.getPath(compileOut, `${backend.name}/${scheme}`),
+                            "resultDir": setupDir,
                         };
+
+                        yield {
+                            "cmdLine": this.cmdLine(
+                                "generate-proof",
+                                {
+                                    "backend": backend.name,
+                                    "input": this.resolveResultDir(compileOut, "out"),
+                                    "proving-key-path": this.resolveResultDir(setupDir, "proving.key"),
+                                    "proving-scheme": scheme,
+                                    "witness": this.resolveResultDir(compileOut, "witness"),
+                                }
+                            ),
+                            "config": schemeConfig,
+                            "phase": "prove",
+                            "resultDir": setupDir,
+                        }
+
+                        yield {
+                            "cmdLine": this.cmdLine(
+                                "verify",
+                                {
+                                    "backend": backend.name,
+                                    "proof-path": this.resolveResultDir(setupDir, "proof.json"),
+                                    "verification-key-path": this.resolveResultDir(setupDir, "verification.key"),
+                                }
+                            ),
+                            "config": schemeConfig,
+                            "phase": "verify",
+                            "resultDir": setupDir,
+                        }
                     }
                 }
             }
         }
     }
 
-    private cmdLine(action: string, options: Record<string, string>): string[] {
+    private cmdLine(action: string, options: Record<string, string | string[]>): string[] {
         const cmd = [this.exe, action];
         for (const [key, value] of Object.entries(options)) {
-            cmd.push(`--${key}`, value);
+            const values = Array.isArray(value) ? value : [value];
+            cmd.push(`--${key}`, ...values);
         }
         return cmd;
     }
@@ -178,6 +239,3 @@ export default class Zokrates extends System {
 const universalSchemes: Scheme[] = [
     "marlin",
 ];
-
-const inputFolder = path.resolve(__dirname, "systems/zokrates/programs");
-const inputFiles = fs.readdirSync(inputFolder).map(file => path.resolve(inputFolder, file));

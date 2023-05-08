@@ -17,7 +17,7 @@ export default class Libsnark extends System {
 
     public *run(): Generator<RunConfig, void, void> {
         for (const curve of curves) {
-            const resultsPath = this.getPath(curve);
+            const resultsPath = this.resolveResultDir(curve);
             createDir(resultsPath);
 
             for (const phase of phases) {
