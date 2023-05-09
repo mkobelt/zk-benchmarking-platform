@@ -76,6 +76,8 @@ for (const system of systems) {
                 "/",
                 "--overlay-dir",
                 "/home",
+                "--output",
+                path.resolve(outDir, `${run.phase}.log`),
                 "--output-directory",
                 outDir,
                 "--",
@@ -91,8 +93,6 @@ for (const system of systems) {
             fs.writeSync(resultFiles[run.phase], csv);
         } catch (err) {
             console.log(err);
-        } finally {
-            fs.renameSync(path.resolve(rootDir, "output.log"), path.resolve(outDir, `${run.phase}.log`));
         }
     }
 }
