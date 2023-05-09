@@ -4,8 +4,9 @@ import * as os from "node:os";
 import * as fs from "node:fs";
 
 import { System } from "./system";
-import Zokrates from "./zokrates";
-import Gnark from "./gnark";
+import Zokrates from "./systems/zokrates";
+import Gnark from "./systems/gnark";
+import { csvDir, rootDir } from "./fs";
 
 export function createDir(path: string) {
     try {
@@ -17,8 +18,6 @@ export function createDir(path: string) {
     }
 }
 
-const resultDir = path.resolve(__dirname, "results");
-const csvDir = path.resolve(resultDir, "csv");
 createDir(csvDir);
 
 export const phases = ["compile", "setup", "prove", "verify"] as const;
@@ -103,7 +102,7 @@ for (const system of systems) {
         } catch (err) {
             console.log(err);
         } finally {
-            fs.renameSync(path.resolve(__dirname, "output.log"), path.resolve(outDir, `${run.phase}.log`));
+            fs.renameSync(path.resolve(rootDir, "output.log"), path.resolve(outDir, `${run.phase}.log`));
         }
     }
 }

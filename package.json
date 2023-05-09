@@ -1,7 +1,7 @@
 {
   "name": "zk-benchmarking-platform",
   "scripts": {
-    "bench": "npx ts-node bench.ts"
+    "bench": "npx ts-node ts/bench.ts"
   },
   "repository": {
     "type": "git",

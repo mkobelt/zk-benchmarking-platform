@@ -1,10 +1,11 @@
 import * as child_process from "node:child_process";
 import * as path from "node:path";
 
-import { RunConfig, System } from "./system";
-import { phases } from "./bench";
+import { RunConfig, System } from "../system";
+import { phases } from "../bench";
+import { systemsDir } from "../fs";
 
-const gnarkDir = path.resolve(__dirname, "systems/gnark");
+const gnarkDir = path.resolve(systemsDir, "gnark/");
 
 const scenarios = Object.freeze([
     "mimc",

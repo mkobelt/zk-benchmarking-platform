@@ -2,9 +2,11 @@ import * as path from "node:path";
 import * as fs from "node:fs";
 import * as child_process from "node:child_process";
 
-import { RunConfig, System } from "./system";
+import { RunConfig, System } from "../system";
+import { systemsDir } from "../fs";
 
-const programFolder = path.resolve(__dirname, "systems/zokrates/programs");
+const zokratesDir = path.resolve(systemsDir, "zokrates/");
+const programFolder = path.resolve(zokratesDir, "programs/");
 const programFiles = fs.readdirSync(programFolder)
     .filter(file => path.extname(file) === ".zok")
     .map(file => {
@@ -94,13 +96,13 @@ export default class Zokrates extends System {
 
     public build(): void {
         console.log("Building ZoKrates from source...");
-        const res = child_process.spawnSync(path.resolve(__dirname, "systems/zokrates/install.sh"));
+        const res = child_process.spawnSync(path.resolve(zokratesDir, "install.sh"));
         if (res.status !== 0) {
             throw res.error ?? new Error("Unknown error");
         }
         console.log("Built ZoKrates");
 
-        const exePath = path.resolve(__dirname, "systems/zokrates/source/target/release/zokrates");
+        const exePath = path.resolve(zokratesDir, "source/target/release/zokrates");
         if (!fs.existsSync(exePath)) {
             throw new Error("ZoKrates executable does not exist at expected path");
         }
@@ -139,7 +141,7 @@ export default class Zokrates extends System {
                         {
                             "input": program,
                             curve,
-                            "stdlib-path": path.resolve(__dirname, "systems/zokrates/source/zokrates_stdlib/stdlib"),
+                            "stdlib-path": path.resolve(zokratesDir, "source/zokrates_stdlib/stdlib/"),
                             "r1cs": "/dev/null",
                         }
                     ),

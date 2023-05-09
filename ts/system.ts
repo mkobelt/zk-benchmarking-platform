@@ -1,5 +1,6 @@
 import * as path from "node:path";
 import { phases } from "./bench";
+import { resultsDir } from "./fs";
 
 export type RunConfig = {
     cmdLine: string[];
@@ -15,7 +16,7 @@ export abstract class System {
 
     constructor(name: string) {
         this.name = name;
-        this.resultsDir = path.resolve(__dirname, "results", name);
+        this.resultsDir = path.resolve(resultsDir, name);
     }
 
     public abstract run(): Generator<RunConfig, void, void>;
@@ -24,8 +25,4 @@ export abstract class System {
     public resolveResultDir(...p: string[]): string {
         return path.resolve(this.resultsDir, ...p);
     }
-}
-
-class Run {
-
 }
