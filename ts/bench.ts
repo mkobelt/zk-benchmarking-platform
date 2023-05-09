@@ -3,14 +3,12 @@ import * as path from "node:path";
 import * as os from "node:os";
 import * as fs from "node:fs";
 
-import { System } from "./system";
+import { Phase, System, phases } from "./system";
 import Zokrates from "./systems/zokrates";
 import Gnark from "./systems/gnark";
 import { createDir, csvDir, rootDir } from "./fs";
 
 createDir(csvDir);
-
-export const phases = ["compile", "setup", "prove", "verify"] as const;
 
 const systems: System[] = [
     new Zokrates(),
@@ -57,16 +55,16 @@ const resultFiles = phases.reduce((obj, phase) => {
     fs.writeSync(fd, csvHeader);
     obj[phase] = fd;
     return obj;
-}, {} as Record<typeof phases[number], number>);
+}, {} as Record<Phase, number>);
 
 for (const system of systems) {
-    const systemDir = system.resolveResultDir();
+    const systemDir = system.resultsDir;
     createDir(systemDir);
 
     system.build();
 
     for (const run of system.run()) {
-        const outDir = system.resolveResultDir(run.resultDir);
+        const outDir = path.resolve(systemDir, system.currentConfig.directory);
         createDir(outDir);
 
         const res = child_process.spawnSync(
@@ -80,6 +78,8 @@ for (const system of systems) {
                 path.resolve(outDir, `${run.phase}.log`),
                 "--output-directory",
                 outDir,
+                "--dir",
+                systemDir,
                 "--",
                 ...run.cmdLine,
             ]);
@@ -88,7 +88,7 @@ for (const system of systems) {
 
         try {
             const results = collectStatistics(lines);
-            const csv = `${system.name},${run.config},${stats.map(stat => results[stat]).join(",")}\n`;
+            const csv = `${system.name},${system.currentConfig.toString()},${stats.map(stat => results[stat]).join(",")}\n`;
 
             fs.writeSync(resultFiles[run.phase], csv);
         } catch (err) {

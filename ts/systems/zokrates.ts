@@ -110,131 +110,106 @@ export default class Zokrates extends System {
     }
 
     public *run(): Generator<RunConfig, void, void> {
-        const config = new Config();
-        for (const curve of curves) {
-            config.push(curve);
-            for (const scheme of schemes) {
-                if (!universalSchemes.includes(scheme)) { continue; }
-                config.push(scheme);
+        yield* this.newConfigLayer(curves, curve => curve, function*(curve) {
+            yield* this.newEmptyConfigLayer("universal-setup", function*() {
+                yield* this.newConfigLayer(schemes, scheme => scheme, function*(scheme) {
+                    yield {
+                        "cmdLine": this.cmdLine(
+                            "universal-setup",
+                            {
+                                curve,
+                                "proving-scheme": scheme,
+                                "size": "18", // TODO Detect from out file, use ark-marlin rust lib
+                            },
+                        ),
+                        "phase": "setup",
+                    };
+                });
+            });
 
-                yield {
-                    "cmdLine": this.cmdLine(
-                        "universal-setup",
-                        {
-                            curve,
-                            "proving-scheme": scheme,
-                            "size": "18", // TODO Detect from out file, use ark-marlin rust lib
-                        },
-                    ),
-                    config,
-                    "phase": "setup",
-                    "resultDir": `${curve}/universal-setup/${scheme}`,
-                };
-                config.pop();
-            }
-
-            for (const {program, inputs} of programFiles) {
-                const fileName = path.parse(program).name;
-                config.push(fileName);
-                const compileOut = `${curve}/programs/${fileName}`;
-
-                yield {
-                    "cmdLine": this.cmdLine(
-                        "compile",
-                        {
-                            "input": program,
-                            curve,
-                            "stdlib-path": path.resolve(zokratesDir, "source/zokrates_stdlib/stdlib/"),
-                            "r1cs": "/dev/null",
-                        }
-                    ),
-                    config,
-                    "phase": "compile",
-                    "resultDir": compileOut,
-                };
-
-                yield {
-                    "cmdLine": this.cmdLine(
-                        "compute-witness",
-                        {
-                            "abi-spec": this.resolveResultDir(compileOut, "abi.json"),
-                            "arguments": fs.readFileSync(inputs, "utf-8").split(" "),
-                            "input": this.resolveResultDir(compileOut, "out"),
-                        },
-                    ),
-                    config,
-                    "phase": "prove",
-                    "resultDir": compileOut,
-                }
-
-                for (const backend of backends) {
-                    if (!backend.supportsCurve(curve)) { continue; }
-
-                    config.push(backend.name);
-
-                    for (const scheme of backend.schemes) {
-                        if (!backend.supportsScheme(scheme)) { continue; }
-
-                        config.push(scheme);
-
-                        const options: Record<string, string> = {};
-                        if (universalSchemes.includes(scheme)) {
-                            options["universal-setup-path"] = this.resolveResultDir(`${curve}/universal-setup/${scheme}/universal_setup.dat`);
-                        }
-
-                        const setupDir = `${compileOut}/${backend.name}/${scheme}`;
-
-                        yield {
-                            "cmdLine": this.cmdLine(
-                                "setup",
-                                Object.assign(options, {
-                                    "input": this.resolveResultDir(`${compileOut}/out`),
-                                    "backend": backend.name,
-                                    "proving-scheme": scheme,
-                                }),
-                            ),
-                            config,
-                            "phase": "setup",
-                            "resultDir": setupDir,
-                        };
-
-                        yield {
-                            "cmdLine": this.cmdLine(
-                                "generate-proof",
-                                {
-                                    "backend": backend.name,
-                                    "input": this.resolveResultDir(compileOut, "out"),
-                                    "proving-key-path": this.resolveResultDir(setupDir, "proving.key"),
-                                    "proving-scheme": scheme,
-                                    "witness": this.resolveResultDir(compileOut, "witness"),
-                                }
-                            ),
-                            config,
-                            "phase": "prove",
-                            "resultDir": setupDir,
-                        }
-
-                        yield {
-                            "cmdLine": this.cmdLine(
-                                "verify",
-                                {
-                                    "backend": backend.name,
-                                    "proof-path": this.resolveResultDir(setupDir, "proof.json"),
-                                    "verification-key-path": this.resolveResultDir(setupDir, "verification.key"),
-                                }
-                            ),
-                            config,
-                            "phase": "verify",
-                            "resultDir": setupDir,
-                        }
-                        config.pop();
+            yield* this.newEmptyConfigLayer("programs", function*() {
+                yield* this.newConfigLayer(programFiles, ({program}) => path.parse(program).name, function*({program, inputs}) {
+                    const compileDir = this.currentConfig.directory;
+                    
+                    yield {
+                        "cmdLine": this.cmdLine(
+                            "compile",
+                            {
+                                "input": program,
+                                curve,
+                                "stdlib-path": path.resolve(zokratesDir, "source/zokrates_stdlib/stdlib/"),
+                                "r1cs": "/dev/null",
+                            }
+                        ),
+                        "phase": "compile",
+                    };
+    
+                    yield {
+                        "cmdLine": this.cmdLine(
+                            "compute-witness",
+                            {
+                                "abi-spec": path.join(compileDir, "abi.json"),
+                                "arguments": fs.readFileSync(inputs, "utf-8").split(" "),
+                                "input": path.join(compileDir, "out"),
+                            },
+                        ),
+                        "phase": "prove",
                     }
-                    config.pop();
-                }
-                config.pop();
-            }
-            config.pop();
-        }
+
+                    yield* this.newConfigLayer(backends, ({name}) => name, function*(backend) {
+                        if (!backend.supportsCurve(curve)) { return; }
+
+                        yield* this.newConfigLayer(backend.schemes, scheme => scheme, function*(scheme) {
+                            if (!backend.supportsScheme(scheme)) { return; }
+
+                            const options: Record<string, string> = {};
+                            if (universalSchemes.includes(scheme)) {
+                                options["universal-setup-path"] = `${curve}/universal-setup/${scheme}/universal_setup.dat`;
+                            }
+
+                            yield {
+                                "cmdLine": this.cmdLine(
+                                    "setup",
+                                    Object.assign(options, {
+                                        "input": path.join(compileDir, "out"),
+                                        "backend": backend.name,
+                                        "proving-scheme": scheme,
+                                    }),
+                                ),
+                                "phase": "setup",
+                            };
+
+                            yield {
+                                "cmdLine": this.cmdLine(
+                                    "generate-proof",
+                                    {
+                                        "backend": backend.name,
+                                        "input": path.join(compileDir, "out"),
+                                        "proving-key-path": path.join(this.currentConfig.directory, "proving.key"),
+                                        "proving-scheme": scheme,
+                                        "witness": path.join(compileDir, "witness"),
+                                    }
+                                ),
+                                "phase": "prove",
+                            }
+
+                            yield {
+                                "cmdLine": this.cmdLine(
+                                    "verify",
+                                    {
+                                        "backend": backend.name,
+                                        "proof-path": path.join(this.currentConfig.directory, "proof.json"),
+                                        "verification-key-path": path.join(this.currentConfig.directory, "verification.key"),
+                                    }
+                                ),
+                                "phase": "verify",
+                                "config": new Config(),
+                            }
+                        });
+                    });
+                });
+            });
+        });
     }
 
     private cmdLine(action: string, options: Record<string, string | string[]>): string[] {

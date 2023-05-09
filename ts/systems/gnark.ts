@@ -1,8 +1,7 @@
 import * as child_process from "node:child_process";
 import * as path from "node:path";
 
-import { Config, RunConfig, System } from "../system";
-import { phases } from "../bench";
+import { RunConfig, System, phases } from "../system";
 import { systemsDir } from "../fs";
 
 const gnarkDir = path.resolve(systemsDir, "gnark/");
@@ -59,14 +58,9 @@ export default class Gnark extends System {
 
     public *run(): Generator<RunConfig, void, void> {
         const exe = path.resolve(gnarkDir, "build/gnark");
-        const config = new Config();
 
-        for (const scenario of scenarios) {
-            config.push(scenario);
-            for (const [curve, curveID] of Object.entries(supportedCurves)) {
-                config.push(curve);
-                const outDir = `${scenario}/${curve}`;
-
+        yield* this.newConfigLayer(scenarios, s => s, function*(scenario) {
+            yield* this.newConfigLayer(Object.entries(supportedCurves), ([curve]) => curve, function*([curve, curveID]) {
                 for (const phase of phases) {
                     const extraArgs: string[] = [];
                     if (phase === "prove") {
@@ -78,17 +72,13 @@ export default class Gnark extends System {
                             phase,
                             scenario,
                             curveID,
-                            this.resolveResultDir(outDir),
+                            this.currentConfig.directory,
                             ...extraArgs,
                         ],
-                        config,
                         phase,
-                        "resultDir": outDir,
                     }
                 }
-                config.pop();
-            }
-            config.pop();
-        }
+            });
+        });
     }
 }
