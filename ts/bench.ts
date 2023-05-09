@@ -6,17 +6,7 @@ import * as fs from "node:fs";
 import { System } from "./system";
 import Zokrates from "./systems/zokrates";
 import Gnark from "./systems/gnark";
-import { csvDir, rootDir } from "./fs";
-
-export function createDir(path: string) {
-    try {
-        fs.mkdirSync(path, {"recursive": true});
-    } catch(err) {
-        if (typeof err !== "object" || err === null || !("code" in err) || err.code !== "EEXIST") {
-            throw err;
-        }
-    }
-}
+import { createDir, csvDir, rootDir } from "./fs";
 
 createDir(csvDir);
 
