@@ -6,7 +6,7 @@ import * as fs from "node:fs";
 import { Phase, System, phases } from "./system";
 import Zokrates from "./systems/zokrates";
 import Gnark from "./systems/gnark";
-import { createDir, csvDir, rootDir } from "./fs";
+import { createDir, csvDir } from "./fs";
 
 createDir(csvDir);
 
@@ -82,14 +82,21 @@ const resultFiles = phases.reduce((obj, phase) => {
 }, {} as Record<Phase, number>);
 
 for (const system of systems) {
+    console.group(system.name);
+
     const systemDir = system.resultsDir;
     createDir(systemDir);
 
     system.build();
 
     for (const run of system.run()) {
+        // Acessing the current config via the System seems unidiomatic
+        console.group(`${run.phase}: ${system.currentConfig.toString()}`);
+
         const outDir = path.resolve(systemDir, system.currentConfig.directory);
         createDir(outDir);
+
+        console.log("Start run...");
 
         const res = child_process.spawnSync(
             "runexec",
@@ -107,6 +114,9 @@ for (const system of systems) {
                 "--",
                 ...run.cmdLine,
             ]);
+
+        console.log("Run ended");
+
         const out = res.stdout.toString();
         const lines = out.split(os.EOL);
 
@@ -118,5 +128,7 @@ for (const system of systems) {
         } catch (err) {
             console.log(err);
         }
+        console.groupEnd();
     }
+    console.groupEnd();
 }
