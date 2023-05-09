@@ -17,12 +17,9 @@ const systems: System[] = [
 
 const stats = [
     "cputime",
-    "returnvalue",
     "walltime",
     "memory",
 ] as const;
-
-const regex = new RegExp(`^(${stats.join("|")})=(.+)`);
 
 type RunStats = Record<typeof stats[number], string>;
 
@@ -30,13 +27,40 @@ function collectStatistics(lines: string[]): RunStats {
     const results: Partial<RunStats> = {};
 
     for (const line of lines) {
-        const match = line.match(regex);
-        if (match === null) { continue; }
+        const match = line.match(/^(.+?)=(.+)$/);
+        if (match === null) {
+            if (line === "") {
+                continue;
+            }
+            throw new Error(`unrecognized output from runexec: "${line}"`);
+        }
 
-        const stat = match[1] as keyof RunStats;
-        const value = match[2];
+        const [, stat, value] = match;
 
-        results[stat] = value;
+        switch(stat) {
+            case "memory":
+            case "cputime":
+            case "walltime":
+                results[stat] = value.slice(0, -1); // Trim suffix (bytes or seconds)
+                break;
+            case "returnvalue":
+                if (value !== "0") {
+                    throw new Error(`run exited with non-zero return value ${value}`);
+                }
+                break;
+            case "terminationreason":
+                throw new Error(`benchexec terminated with reason "${value}"`);
+            case "exitsignal":
+                throw new Error(`run killed with signal "${value}"`);
+            case "starttime":
+            case "blkio-read":
+            case "blkio-write":
+                break;
+            default:
+                if (!stat.startsWith("cputime-cpu")) {
+                    throw new Error(`unknown run result with key "${stat}" and value "${value}"`);
+                }
+        }
     }
 
     for (const stat of stats) {
