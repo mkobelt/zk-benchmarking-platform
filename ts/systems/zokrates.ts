@@ -4,21 +4,10 @@ import * as child_process from "node:child_process";
 
 import { Config, RunConfig, System } from "../system";
 import { systemsDir } from "../fs";
+import { Scenarios, scenarioInputs } from "../config";
 
 const zokratesDir = path.resolve(systemsDir, "zokrates/");
 const programFolder = path.resolve(zokratesDir, "programs/");
-const programFiles = fs.readdirSync(programFolder)
-    .filter(file => path.extname(file) === ".zok")
-    .map(file => {
-        const inputFile = path.resolve(programFolder, `${path.parse(file).name}.inputs`);
-        if (!fs.existsSync(inputFile)) {
-            throw new Error(`Inputs for program ${file} do not exist`);
-        }
-        return {
-            "program": path.resolve(programFolder, file),
-            "inputs": inputFile,
-        }
-    });
 
 const curves = [
     "bn128",
@@ -112,14 +101,14 @@ export default class Zokrates extends System {
     public *run(): Generator<RunConfig, void, void> {
         yield* this.newConfigLayer(curves, curve => curve, function*(curve) {
             yield* this.newEmptyConfigLayer("universal-setup", function*() {
-                yield* this.newConfigLayer(schemes, scheme => scheme, function*(scheme) {
+                yield* this.newConfigLayer(schemes.filter(scheme => universalSchemes.includes(scheme)), scheme => scheme, function*(scheme) {
                     yield {
                         "cmdLine": this.cmdLine(
                             "universal-setup",
                             {
                                 curve,
                                 "proving-scheme": scheme,
-                                "size": "18", // TODO Detect from out file, use ark-marlin rust lib
+                                "size": "10", // TODO Detect from out file, use ark-marlin rust lib
                             },
                         ),
                         "phase": "setup",
@@ -128,14 +117,14 @@ export default class Zokrates extends System {
             });
 
             yield* this.newEmptyConfigLayer("programs", function*() {
-                yield* this.newConfigLayer(programFiles, ({program}) => path.parse(program).name, function*({program, inputs}) {
+                yield* this.newConfigLayer(Scenarios, scenario => scenario, function*(scenario) {
                     const compileDir = this.currentConfig.directory;
                     
                     yield {
                         "cmdLine": this.cmdLine(
                             "compile",
                             {
-                                "input": program,
+                                "input": path.resolve(programFolder, `${scenario}.zok`),
                                 curve,
                                 "stdlib-path": path.resolve(zokratesDir, "source/zokrates_stdlib/stdlib/"),
                                 "r1cs": "/dev/null",
@@ -149,7 +138,7 @@ export default class Zokrates extends System {
                             "compute-witness",
                             {
                                 "abi-spec": path.join(compileDir, "abi.json"),
-                                "arguments": fs.readFileSync(inputs, "utf-8").split(" "),
+                                "arguments": scenarioInputs(scenario, curve).inputs.join(" "),
                                 "input": path.join(compileDir, "out"),
                             },
                         ),

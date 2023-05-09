@@ -3,12 +3,9 @@ import * as path from "node:path";
 
 import { RunConfig, System, phases } from "../system";
 import { systemsDir } from "../fs";
+import { Curve, Scenario, Scenarios, scenarioInputs } from "../config";
 
 const gnarkDir = path.resolve(systemsDir, "gnark/");
-
-const scenarios = Object.freeze([
-    "mimc",
-] as const);
 
 const supportedCurves = Object.freeze({
     "bn254": "1",
@@ -18,33 +15,7 @@ const supportedCurves = Object.freeze({
     "bls24_317": "6",
     "bw6_761": "7",
     "bw6_633": "8",
-} as const);
-
-type Scenario = typeof scenarios[number];
-type Curve = keyof typeof supportedCurves;
-
-const scenarioInputs = Object.freeze({
-    "mimc": mimcInputs,
-}) satisfies Record<Scenario, (curve: Curve) => string[]>;
-
-function mimcInputs(curve: Curve): string[] {
-    switch(curve) {
-        case "bn254":
-            return ["1", "18045289051299654077710208499747278752099041449041972372412271818361923969579"];
-        case "bls12_377":
-            return ["1", "6145395493319860668016347858812770023447391082436850637703433811806758341511"];
-        case "bls12_381":
-            return ["1", "35137972692771717943992759113612269767581262500164574105059686144346651628747"];
-        case "bls24_315":
-            return ["1", "10675032186594769102008327189341124254282922948344351042425259179324447064949"];
-        case "bls24_317":
-            return ["1", "24073899436647966469753768012435382607114076207060896642383805613711216650410"];
-        case "bw6_761":
-            return ["1", "52462813434563329468569976771684427598929511969142750251201358722364231678191421315668519831414213234535031229629"];
-        case "bw6_633":
-            return ["1", "14997157209685850100394117856716406588017694194285850582469002077951986274150591220709168187062"];
-    }
-}
+} as const satisfies Partial<Record<Curve, string>>);
 
 export default class Gnark extends System {
     constructor() {
@@ -59,12 +30,13 @@ export default class Gnark extends System {
     public *run(): Generator<RunConfig, void, void> {
         const exe = path.resolve(gnarkDir, "build/gnark");
 
-        yield* this.newConfigLayer(scenarios, s => s, function*(scenario) {
+        yield* this.newConfigLayer(Scenarios, s => s, function*(scenario) {
             yield* this.newConfigLayer(Object.entries(supportedCurves), ([curve]) => curve, function*([curve, curveID]) {
                 for (const phase of phases) {
                     const extraArgs: string[] = [];
                     if (phase === "prove") {
-                        extraArgs.push(...scenarioInputs[scenario](curve as Curve));
+                        const {inputs, outputs} = scenarioInputs(scenario, curve as Curve);
+                        extraArgs.push(...inputs.concat(outputs));
                     }
                     yield {
                         "cmdLine": [

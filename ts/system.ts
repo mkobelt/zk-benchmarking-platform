@@ -63,7 +63,7 @@ export abstract class System {
         }
     }
 
-    protected *newEmptyConfigLayer(name: string, fn: (this:this) => Generator<RunConfig, void, void>): Generator<RunConfig, void, void> {
+    protected *newEmptyConfigLayer(name: string, fn: (this: this) => Generator<RunConfig, void, void>): Generator<RunConfig, void, void> {
         this.currentConfig.push(name, true);
         yield* fn.call(this);
         this.currentConfig.pop();
