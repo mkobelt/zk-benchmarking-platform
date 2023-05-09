@@ -2,9 +2,15 @@ import * as path from "node:path";
 import { phases } from "./bench";
 import { resultsDir } from "./fs";
 
+export class Config extends Array<string> {
+    public toString(): string {
+        return this.join(".");
+    }
+}
+
 export type RunConfig = {
     cmdLine: string[];
-    config: string;
+    config: Config;
     phase: typeof phases[number];
     resultDir: string;
 };

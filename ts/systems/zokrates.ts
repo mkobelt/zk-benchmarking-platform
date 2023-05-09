@@ -2,7 +2,7 @@ import * as path from "node:path";
 import * as fs from "node:fs";
 import * as child_process from "node:child_process";
 
-import { RunConfig, System } from "../system";
+import { Config, RunConfig, System } from "../system";
 import { systemsDir } from "../fs";
 
 const zokratesDir = path.resolve(systemsDir, "zokrates/");
@@ -110,10 +110,12 @@ export default class Zokrates extends System {
     }
 
     public *run(): Generator<RunConfig, void, void> {
+        const config = new Config();
         for (const curve of curves) {
+            config.push(curve);
             for (const scheme of schemes) {
                 if (!universalSchemes.includes(scheme)) { continue; }
-                const config = `${curve}.${scheme}`;
+                config.push(scheme);
 
                 yield {
                     "cmdLine": this.cmdLine(
@@ -128,11 +130,12 @@ export default class Zokrates extends System {
                     "phase": "setup",
                     "resultDir": `${curve}/universal-setup/${scheme}`,
                 };
+                config.pop();
             }
 
             for (const {program, inputs} of programFiles) {
                 const fileName = path.parse(program).name;
-                const curveFileConfig = `${curve}.${fileName}`;
+                config.push(fileName);
                 const compileOut = `${curve}/programs/${fileName}`;
 
                 yield {
@@ -145,7 +148,7 @@ export default class Zokrates extends System {
                             "r1cs": "/dev/null",
                         }
                     ),
-                    "config": curveFileConfig,
+                    config,
                     "phase": "compile",
                     "resultDir": compileOut,
                 };
@@ -159,18 +162,20 @@ export default class Zokrates extends System {
                             "input": this.resolveResultDir(compileOut, "out"),
                         },
                     ),
-                    "config": curveFileConfig,
+                    config,
                     "phase": "prove",
                     "resultDir": compileOut,
                 }
 
                 for (const backend of backends) {
-                    const backendConfig = `${curveFileConfig}.${backend.name}`;
                     if (!backend.supportsCurve(curve)) { continue; }
 
+                    config.push(backend.name);
+
                     for (const scheme of backend.schemes) {
-                        const schemeConfig = `${backendConfig}.${scheme}`;
                         if (!backend.supportsScheme(scheme)) { continue; }
+
+                        config.push(scheme);
 
                         const options: Record<string, string> = {};
                         if (universalSchemes.includes(scheme)) {
@@ -188,7 +193,7 @@ export default class Zokrates extends System {
                                     "proving-scheme": scheme,
                                 }),
                             ),
-                            "config": schemeConfig,
+                            config,
                             "phase": "setup",
                             "resultDir": setupDir,
                         };
@@ -204,7 +209,7 @@ export default class Zokrates extends System {
                                     "witness": this.resolveResultDir(compileOut, "witness"),
                                 }
                             ),
-                            "config": schemeConfig,
+                            config,
                             "phase": "prove",
                             "resultDir": setupDir,
                         }
@@ -218,13 +223,17 @@ export default class Zokrates extends System {
                                     "verification-key-path": this.resolveResultDir(setupDir, "verification.key"),
                                 }
                             ),
-                            "config": schemeConfig,
+                            config,
                             "phase": "verify",
                             "resultDir": setupDir,
                         }
+                        config.pop();
                     }
+                    config.pop();
                 }
+                config.pop();
             }
+            config.pop();
         }
     }
 
