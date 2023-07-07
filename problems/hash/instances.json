@@ -1,0 +1,18 @@
+{
+    "input": ["abc"],
+    "function": {
+        "sha256": {
+            "output": ["def"]
+        },
+        "mimc": {
+            "curve": {
+                "bn128": {
+                    "output": ["123"]
+                },
+                "alt_bn128": {
+                    "output": ["456"]
+                }
+            }
+        }
+    }
+}

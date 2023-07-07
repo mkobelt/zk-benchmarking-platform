@@ -15,3 +15,7 @@ export function createDir(path: string) {
         }
     }
 }
+
+export function systemOutDir(system: string) {
+    return path.resolve(resultsDir, "systems", system);
+}

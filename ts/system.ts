@@ -1,7 +1,8 @@
 import * as path from "node:path";
 import { resultsDir } from "./fs";
+import { z } from "zod";
 
-export const phases = ["compile", "setup", "prove", "verify"] as const;
+export const phases = ["setup", "prove", "verify"] as const;
 export type Phase = typeof phases[number];
 
 export class Config {
@@ -41,14 +42,16 @@ export type RunConfig = {
     phase: Phase;
 };
 
-export abstract class System {
+export abstract class System<T> {
     public readonly name: string;
+    public readonly config: T;
 
     public readonly resultsDir: string;
     public readonly currentConfig = new Config();
 
-    constructor(name: string) {
+    constructor(name: string, config: T) {
         this.name = name;
+        this.config = config;
         this.resultsDir = path.resolve(resultsDir, name);
     }
 

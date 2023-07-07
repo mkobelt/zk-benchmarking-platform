@@ -1,5 +1,5 @@
 from "hashes/mimc7/mimc7" import main as mimc;
 
 def main(private field preImage) -> field {
-    return mimc::<10>(preImage, 0);
+    return mimc::<91>(preImage, 0);
 }

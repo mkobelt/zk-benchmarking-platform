@@ -1,0 +1,44 @@
+{
+    "statements": [{
+        "name": "hash",
+        "function": "mimc"
+    }, {
+        "name": "signature",
+        "type": "eddsa"
+    }],
+    "systems": [
+        {
+            "name": "gnark",
+            "curve": "bls12_381"
+        },
+        {
+            "name": "gnark",
+            "curve": "bn254"
+        },
+        {
+            "name": "gnark",
+            "curve": "bw6_761"
+        },
+        {
+            "name": "zokrates",
+            "backend": "ark",
+            "scheme": "g16",
+            "curve": "bn254"
+        },
+        {
+            "name": "zokrates",
+            "backend": "ark",
+            "scheme": "gm17",
+            "curve": "bn254"
+        },
+        {
+            "name": "zokrates",
+            "backend": "bellman",
+            "scheme": "g16",
+            "curve": "bn254"
+        }
+    ],
+    "profiler": {
+        "repeats": 10
+    }
+}

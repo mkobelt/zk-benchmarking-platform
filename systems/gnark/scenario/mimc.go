@@ -1,3 +1,5 @@
+//go:build scen.mimc
+
 package scenario
 
 import (
@@ -7,12 +9,12 @@ import (
 	"github.com/consensys/gnark/std/hash/mimc"
 )
 
-type MimcScenario struct {
+type mimcScenario struct {
 	PreImage frontend.Variable
 	Image    frontend.Variable `gnark:",public"`
 }
 
-func (scen *MimcScenario) Assign(args []string) error {
+func (scen *mimcScenario) Assign(args []string) error {
 	if len(args) != 2 {
 		return errors.New("require preimage and image arguments")
 	}
@@ -23,7 +25,7 @@ func (scen *MimcScenario) Assign(args []string) error {
 	return nil
 }
 
-func (scen *MimcScenario) Define(api frontend.API) error {
+func (scen *mimcScenario) Define(api frontend.API) error {
 	circ, err := mimc.NewMiMC(api)
 	if err != nil {
 		return err
@@ -35,3 +37,5 @@ func (scen *MimcScenario) Define(api frontend.API) error {
 
 	return nil
 }
+
+var IScenario Scenario = &mimcScenario{}
