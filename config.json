@@ -1,11 +1,4 @@
 {
-    "statements": [{
-        "name": "hash",
-        "function": "mimc"
-    }, {
-        "name": "signature",
-        "type": "eddsa"
-    }],
     "systems": [
         {
             "name": "gnark",
@@ -38,6 +31,13 @@
             "curve": "bn254"
         }
     ],
+    "statements": [{
+        "name": "hash",
+        "function": "mimc"
+    }, {
+        "name": "signature",
+        "type": "eddsa"
+    }],
     "profiler": {
         "repeats": 10
     }
