@@ -1,5 +1,6 @@
 import { UnreachableCaseError } from "ts-essentials";
 import { z } from "zod";
+import { RunConfig, StatementIO } from "../integrations/integration";
 
 export const allStatements = z.discriminatedUnion("name", [
     z.object({
@@ -10,35 +11,22 @@ export const allStatements = z.discriminatedUnion("name", [
         "name": z.literal("signature"),
         "type": z.literal("eddsa"),
     }),
-    z.object({
-        "name": z.literal("set_membership"),
-        "method": z.enum(["merkle", "rsa"]),
-        "hash": z.enum(["sha256", "mimc"]),
-    })
 ]);
 
-export type StatementConfig = z.infer<typeof allStatements>;
+export type AllStatements = z.infer<typeof allStatements>;
 
-type StatementParameters = {
-    input: string[];
-    output: string[];
-};
-
-export function statementInputs(
-    config: StatementConfig,
-    systemConfig: Record<string, unknown>,
-) {
-    switch (config.name) {
+export function statementInputs(config: RunConfig<Record<string, unknown>, AllStatements>): StatementIO {
+    switch (config.statement.name) {
         case "hash":
-            switch (config.function) {
+            switch (config.statement.function) {
                 case "sha256":
                     return {
-                        "preImage": "alsdkjkf",
-                        "image": "aolsdjf",
+                        "input": ["alsdkjkf"],
+                        "output": ["aolsdjf"],
                     };
                 case "mimc": {
                     let image: string;
-                    switch(systemConfig.curve) {
+                    switch(config.system.curve) {
                         case "bls12_377":
                             image = "1683808678237589890991940660402320082539960358730885270986867502922067028343";
                             break;
@@ -68,23 +56,26 @@ export function statementInputs(
                     }
 
                     return {
-                        "preImage": "2500529438769068184939310842255337777019455354716472599427671106327738757593",
-                        image,
+                        "input": ["2500529438769068184939310842255337777019455354716472599427671106327738757593"],
+                        "output": [image],
                     }
                 }
                 default:
-                    throw new UnreachableCaseError(config.function);
+                    throw new UnreachableCaseError(config.statement.function);
             }
         case "signature":
             return {
-                "r": ["10041775272610680597649138558111867140088287599035431170728241228669634925671", "19045584355489137154300255038437027652180257880634202059955435891798466344432"],
-                "s": "14517916597883362893064608394843629693674165114908520112595055382047085957383",
-                "a": ["14897476871502190904409029696666322856887678969656209656241038339251270171395", "16668832459046858928951622951481252834155254151733002984053501254009901876174"],
-                "m": "11908494008557430893638745225033142136929183395599991460993160940994523916657640981651909087138130190920320833227914842955780438350735473049230499968480372",
+                "input": [
+                    "10041775272610680597649138558111867140088287599035431170728241228669634925671",
+                    "19045584355489137154300255038437027652180257880634202059955435891798466344432",
+                    "14517916597883362893064608394843629693674165114908520112595055382047085957383",
+                    "14897476871502190904409029696666322856887678969656209656241038339251270171395",
+                    "16668832459046858928951622951481252834155254151733002984053501254009901876174",
+                    "11908494008557430893638745225033142136929183395599991460993160940994523916657640981651909087138130190920320833227914842955780438350735473049230499968480372",
+                ],
+                "output": [],
             }
-        case "set_membership":
-            throw new Error("Not implemented");
         default:
-            throw new UnreachableCaseError(config);
+            throw new UnreachableCaseError(config.statement);
     }
 }

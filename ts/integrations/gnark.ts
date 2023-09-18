@@ -1,11 +1,10 @@
 import { z } from "zod";
-import { CommandSequence, Integration, PickSchema, StatementInstance } from "./integration";
+import { CommandSequence, Integration, PHASES, PickFromSchema, StatementInstance } from "./integration";
 import * as path from "node:path"
 import { systemsDir } from "../fs";
-import { phases } from "../system";
 import { startProcess } from "../process";
-import { StatementConfig, statementInputs } from "../workload/statement";
-import { AsyncOrSync } from "ts-essentials";
+import { AllStatements, allStatements, statementInputs } from "../workload/statement";
+import { AsyncOrSync, UnreachableCaseError } from "ts-essentials";
 
 const gnarkDir = path.resolve(systemsDir, "gnark/");
 
@@ -19,67 +18,40 @@ export const supportedCurves = [
     "bw6_633",
 ] as const;
 
-const systemSchema = z.object({
-    "curve": z.enum(supportedCurves),
+const schema = z.object({
+    "system": z.object({
+        "curve": z.enum(supportedCurves),
+    }),
+    "statement": allStatements,
 });
 
-type CWrapper = PickSchema<typeof systemSchema, "curve">;
-type CProvider = PickSchema<typeof systemSchema, null>;
+type Schema = typeof schema;
+type CWrapper = PickFromSchema<Schema, "curve">;
+type CProvider = PickFromSchema<Schema, null>;
 
 export default new (class extends Integration<
     CWrapper,
     CProvider,
-    typeof systemSchema,
+    AllStatements,
+    Schema,
     void,
     string
 > {
-    protected getStatementInstance(statementConfig: StatementConfig, systemConfig: CWrapper & CProvider): StatementInstance<string> {
-        const io = statementInputs(statementConfig, systemConfig);
+    protected override getInterface(_config: CProvider): AsyncOrSync<void> {}
 
-        if (typeof io.preImage !== "undefined") {
-            return {
-                "statement": this.getStatementName(statementConfig),
-                "input": [io.preImage],
-                "output": [io.image],
-            }
-        }
-
-        return {
-            "statement": this.getStatementName(statementConfig),
-            "input": [...io.r, io.s, ...io.a, io.m],
-            "output": [],
-        }
-    }
-    protected isValidConfig(_systemConfig: CWrapper & CProvider, runset: StatementConfig): boolean {
-        switch(runset.name) {
-            case "hash":
-                switch(runset.function) {
-                    case "mimc":
-                        return true;
-                    default:
-                        return false;
-                }
-            case "signature":
-                return true;
-            default:
-                return false;
-        }
-    }
-    protected getInterface(_config: CProvider): AsyncOrSync<void> {}
-
-    protected override getStatementName(statementConfig: StatementConfig): string {
+    protected override getStatement(statementConfig: AllStatements): string {
         switch(statementConfig.name) {
             case "hash":
                 return `${statementConfig.function}`;
             case "signature":
                 return `eddsa`;
-            case "set_membership":
-                throw new Error("not implemented");
+            default:
+                throw new UnreachableCaseError(statementConfig);
         }
     }
 
     protected override async buildCommands(config: CWrapper, statement: StatementInstance<string>, _api: void): Promise<CommandSequence> {
-        const commands = await Promise.all(phases.map(async phase => {
+        const commands = await Promise.all(PHASES.map(async phase => {
             const extraArgs: string[] = [];
             if (phase === "prove") {
                 extraArgs.push(
@@ -119,5 +91,5 @@ export default new (class extends Integration<
         };
     }
 })(
-    systemSchema,
+    schema,
 );

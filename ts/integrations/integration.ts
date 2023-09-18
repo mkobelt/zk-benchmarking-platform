@@ -1,7 +1,9 @@
 import { z } from "zod";
-import { StatementConfig, allStatements, statementInputs } from "../workload/statement";
-import type {AsyncOrSync, Writable} from "ts-essentials";
-import { supportedCurves } from "./gnark";
+import { AllStatements, statementInputs } from "../workload/statement";
+import type { AsyncOrSync } from "ts-essentials";
+
+export const PHASES = ["setup", "prove", "verify"] as const;
+export type Phase = typeof PHASES[number];
 
 export type Command = {
     command: string[];
@@ -15,100 +17,66 @@ export type CommandSequence = {
 
 export type Curve = "bn128" | "bn254" | "bls12_377" | "bls12_381" | "bls24_315" | "bls24_317" | "bw6_761" | "bw6_633";
 
-export type MultiConfig = {
-    [P in string]: unknown[] | MultiConfig;
-};
-
-export type PickSchema<SystemSchema extends z.ZodTypeAny, Props extends keyof z.infer<SystemSchema> | null> =
-    [Props] extends [keyof z.infer<SystemSchema>]
-        ? Pick<z.infer<SystemSchema>, Props>
+export type PickFromSchema<Schema extends z.ZodType<RunConfig<unknown, unknown>>, Props extends keyof z.infer<Schema>["system"] | null> =
+    [Props] extends [keyof z.infer<Schema>["system"]]
+        ? Pick<z.infer<Schema>["system"], Props>
         : {};
 
-export type SingleConfig<C extends MultiConfig> = {
-    [P in keyof C]: C[P] extends (infer E)[]
-        ? E
-        : C[P] extends MultiConfig
-            ? SingleConfig<C[P]>
-            : never
-}
-
-type Test = z.infer<z.ZodObject<{curve: z.ZodEnum<Writable<typeof supportedCurves>>}>>;
-
-export type StatementInstance<U> = {
-    statement: U;
+export type StatementIO = {
     input: string[];
     output: string[];
 }
 
-type SimplifiedObject<T> = z.ZodObject<z.ZodRawShape, z.UnknownKeysParam, z.ZodTypeAny, T, T>;
+export type StatementInstance<U> = {
+    statement: U;
+} & StatementIO;
+
+export type RunConfig<System, Statement> = {
+    "system": System;
+    "statement": Statement;
+}
 
 export abstract class Integration<
     CProvider extends Record<string, unknown>,
     CWrapper extends Record<string, unknown>,
-    SSystem extends SimplifiedObject<CProvider & CWrapper & {curve: Curve}>,
+    CStatement extends AllStatements,
+    Schema extends z.ZodType<RunConfig<CProvider & CWrapper, CStatement>>,
     Interface,
     Statement,
 > {
     public constructor(
-        public readonly systemSchema: SSystem,
+        public readonly systemSchema: Schema,
     ) {}
 
     protected abstract getInterface(config: CProvider): AsyncOrSync<Interface>;
-    protected abstract getStatementName(statementConfig: StatementConfig): Statement;
+    protected abstract getStatement(statementConfig: AllStatements): Statement;
     protected abstract buildCommands(config: CWrapper, statement: StatementInstance<Statement>, api: Interface): AsyncOrSync<CommandSequence>;
 
-    protected abstract getStatementInstance(statementConfig: StatementConfig, systemConfig: z.infer<SSystem>): StatementInstance<Statement>;
+    protected getStatementInputs(config: z.infer<Schema>): StatementIO {
+        return statementInputs(config);
+    }
 
-    protected abstract isValidConfig(systemConfig: CProvider & CWrapper, runset: StatementConfig): boolean;
+    private getStatementInstance(config: z.infer<Schema>): StatementInstance<Statement> {
+        const io = this.getStatementInputs(config);
 
-    public async run(userConfig: unknown, statementConfig: StatementConfig): Promise<CommandSequence | null> {
-        const systemConfig = this.systemSchema.parse(userConfig);
-        if (!this.isValidConfig(systemConfig, statementConfig)) { return null; }
+        return {
+            "statement": this.getStatement(config.statement),
+            "input": io.input,
+            "output": io.output,
+        };
+    };
+
+    public async run(config: RunConfig<Record<string, unknown>, AllStatements>): Promise<CommandSequence | null> {
+        const systemConfig = this.systemSchema.safeParse(config);
+        if (!systemConfig.success) {
+            return null;
+        }
 
         // TODO Reuse results of previously run identical commands
         return this.buildCommands(
-            systemConfig,
-            this.getStatementInstance(statementConfig, systemConfig),
-            await this.getInterface(systemConfig),
+            systemConfig.data.system,
+            this.getStatementInstance(systemConfig.data),
+            await this.getInterface(systemConfig.data.system),
         );
     }
-}
-
-function getAllCombinations<T extends MultiConfig>(input: T): SingleConfig<T>[] {
-    const keys = Object.keys(input);
-    const combinations: SingleConfig<T>[] = [];
-
-    if (keys.length === 0) {
-        combinations.push({} as SingleConfig<T>); // Add empty object combination if input is empty
-        return combinations;
-      }
-  
-    function generateCombinations(index: number, currentCombination: SingleConfig<T>) {
-        const key = keys[index];
-        const value = input[key];
-    
-        if (Array.isArray(value)) {
-            for (const element of value) {
-                const combination = { ...currentCombination, [key]: element };
-                if (index === keys.length - 1) {
-                    combinations.push(combination);
-                } else {
-                    generateCombinations(index + 1, combination);
-                }
-            }
-        } else {
-            for (const nestedCombination of getAllCombinations(value)) {
-                const combination = { ...currentCombination, [key]: nestedCombination };
-                if (index === keys.length - 1) {
-                    combinations.push(combination);
-                } else {
-                    generateCombinations(index + 1, combination);
-                }
-            }
-        }
-    }
-  
-    generateCombinations(0, {} as SingleConfig<T>);
-  
-    return combinations;
 }

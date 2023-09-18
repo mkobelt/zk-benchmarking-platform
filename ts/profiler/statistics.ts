@@ -1,7 +1,6 @@
 import Decimal from "decimal.js";
 import { createDir, csvDir } from "../fs";
-import { Command } from "../integrations/integration";
-import { Phase, phases } from "../system";
+import { type Command, PHASES, type Phase } from "../integrations/integration";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -78,7 +77,7 @@ const csvHeader = `system,config,${metricsFunctions.flat().join(",")}\n`;
 
 createDir(csvDir);
 
-const resultFiles = phases.reduce((obj, phase) => {
+const resultFiles = PHASES.reduce((obj, phase) => {
     const fd = fs.openSync(path.resolve(csvDir, `${phase}.csv`), "w");
     fs.writeSync(fd, csvHeader);
     obj[phase] = fd;
@@ -105,7 +104,7 @@ function computeStats(results: Record<Metric, Decimal[]>, repeats: number): Reco
 }
 
 export function writeStatistics(name: string, config: string, allRunResults: Record<Phase, RunMetrics>[], repeats: number) {
-    const final = phases.reduce((cur, phase) => {
+    const final = PHASES.reduce((cur, phase) => {
         cur[phase] = metrics.reduce((cur, metric) => {
             cur[metric] = [];
             return cur;
@@ -114,7 +113,7 @@ export function writeStatistics(name: string, config: string, allRunResults: Rec
     }, {} as Record<Phase, Record<Metric, Decimal[]>>);
 
     for (const runResults of allRunResults) {
-        for (const phase of phases) {
+        for (const phase of PHASES) {
             const run = runResults[phase];
             for (const metric of metrics) {
                 final[phase][metric].push(run[metric]);
@@ -122,7 +121,7 @@ export function writeStatistics(name: string, config: string, allRunResults: Rec
         }
     }
 
-    for (const phase of phases) {
+    for (const phase of PHASES) {
         const statistics = computeStats(final[phase], repeats);
 
         const stringStats = metrics.map(metric => {

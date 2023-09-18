@@ -1,12 +1,10 @@
-import { Command, CommandSequence } from "../integrations/integration";
+import { CommandSequence, PHASES, type Phase } from "../integrations/integration";
 import * as path from "node:path";
 import * as os from "node:os";
 import { createDir, systemOutDir } from "../fs";
-import { startProcess } from "../process";
 import * as child_process from "node:child_process";
 import { RunMetrics, isTotal, metrics, writeStatistics } from "./statistics";
 import collectMetrics from "./statistics";
-import { Phase, phases } from "../system";
 import Decimal from "decimal.js";
 
 export default async function profile(systemName: string, cmdSequence: CommandSequence, repeats: number) {
@@ -21,7 +19,7 @@ export default async function profile(systemName: string, cmdSequence: CommandSe
     const allRunResults: Record<Phase, RunMetrics>[] = [];
 
     for (let i = 0; i < repeats; i++) {
-        const runResults = phases.reduce((cur, phase) => {
+        const runResults = PHASES.reduce((cur, phase) => {
             cur[phase] = metrics.reduce((cur, metric) => {
                 cur[metric] = new Decimal(0);
                 return cur;
