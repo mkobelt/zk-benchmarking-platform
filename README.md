@@ -5,6 +5,7 @@
 1. Clone this repository with the `--recurse-submodules` flag or run `git submodule update --init` after cloning.
 2. Run `npm i` to install the dependencies.
 3. Install [BenchExec](https://github.com/sosy-lab/benchexec).
+4. If you want to benchmark ZoKrates, also install Rust and Cargo.
 
 ## Usage
 
