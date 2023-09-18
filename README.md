@@ -1,5 +1,7 @@
 # zk-benchmarking-platform
 
+A research prototype of an extensible benchmarking platform for Zero-Knowledge Proof (ZKP) implementations.
+
 ## Setup
 
 1. Clone this repository with the `--recurse-submodules` flag or run `git submodule update --init` after cloning.
