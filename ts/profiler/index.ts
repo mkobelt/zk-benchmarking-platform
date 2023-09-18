@@ -1,13 +1,15 @@
 import { CommandSequence, PHASES, type Phase } from "../integrations/integration";
 import * as path from "node:path";
+import * as fs from "node:fs";
 import * as os from "node:os";
-import { createDir, systemOutDir } from "../fs";
+import { createDir, resultsDir, systemOutDir } from "../fs";
 import * as child_process from "node:child_process";
 import { RunMetrics, isTotal, metrics, writeStatistics } from "./statistics";
 import collectMetrics from "./statistics";
 import Decimal from "decimal.js";
+import collectSytemInformation from "./systeminformation";
 
-export default async function profile(systemName: string, cmdSequence: CommandSequence, repeats: number) {
+export async function profileRunConfig(systemName: string, cmdSequence: CommandSequence, repeats: number) {
     const systemDir = systemOutDir(systemName);
     createDir(systemDir);
 
@@ -96,4 +98,8 @@ function add(target: RunMetrics, source: RunMetrics) {
     for (const metric of metrics) {
         target[metric] = target[metric].add(source[metric]);
     }
+}
+
+export async function writeSystemInformation() {
+    return fs.writeFileSync(path.resolve(resultsDir, "systeminformation.json"), await collectSytemInformation());
 }

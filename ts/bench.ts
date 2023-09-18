@@ -1,10 +1,12 @@
 import { parseCli, parseConfig } from "./configurator";
 import { INTEGRATIONS } from "./integrations";
-import profile from "./profiler";
+import { profileRunConfig, writeSystemInformation } from "./profiler";
 
 (async () => {
     const cliConfig = parseCli();
     const res = parseConfig(cliConfig.configPath);
+
+    await writeSystemInformation();
 
     for (const systemConfig of res.systems) {
         for (const statementConfig of res.statements) {
@@ -19,7 +21,7 @@ import profile from "./profiler";
                 continue;
             }
 
-            await profile(systemConfig.name, runs, res.profiler.repeats);
+            await profileRunConfig(systemConfig.name, runs, res.profiler.repeats);
         }
     }
 })();
